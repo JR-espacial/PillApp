@@ -4,6 +4,17 @@ import { db } from '../firebase/config';
 import { formatTime } from '../notifications';
 import type { Medication } from '../types';
 
+/** Convert local "HH:MM" to UTC "HH:MM" so the Cloud Function can match by UTC minute. */
+function toUTCTimeRaw(hhmm: string): string {
+  const [h, m] = hhmm.split(':').map(Number);
+  const now = new Date();
+  // Build a Date representing today at the given local time
+  const local = new Date(now.getFullYear(), now.getMonth(), now.getDate(), h, m, 0, 0);
+  const utcH = String(local.getUTCHours()).padStart(2, '0');
+  const utcM = String(local.getUTCMinutes()).padStart(2, '0');
+  return `${utcH}:${utcM}`;
+}
+
 interface UseMedicationsResult {
   meds: Medication[];
   addMed: (med: Omit<Medication, 'id'>) => Promise<string>;
@@ -40,7 +51,8 @@ export function useMedications(uid: string | null): UseMedicationsResult {
       batch.set(doseRef, {
         medicationId: medRef.id,
         medicationName: med.name,
-        time: formatTime(hhmm),
+        time: formatTime(hhmm),       // "8:00 AM" — display string for UI
+        timeRaw: toUTCTimeRaw(hhmm),  // "HH:MM" UTC — for Cloud Function matching
         status: 'Upcoming',
         date: todayISO,
       });

@@ -1,4 +1,4 @@
-import { useState, type ReactNode } from 'react';
+import { useState, useEffect, type ReactNode } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import {
   Home as HomeIcon,
@@ -26,7 +26,8 @@ import { useAuth } from './context/AuthContext';
 import { useMedications } from './hooks/useMedications';
 import { useTodayDoses } from './hooks/useTodayDoses';
 import { useHistory } from './hooks/useHistory';
-import { requestNotificationPermission, scheduleNotifications } from './notifications';
+import { useFcmToken } from './hooks/useFcmToken';
+import { setupForegroundMessages } from './notifications';
 
 type Screen = 'home' | 'meds' | 'history' | 'add';
 
@@ -49,6 +50,12 @@ export default function App() {
   const { doses, markTaken } = useTodayDoses(uid);
   const { history } = useHistory(uid);
 
+  useFcmToken(uid);
+
+  useEffect(() => {
+    if (uid) setupForegroundMessages().catch(console.error);
+  }, [uid]);
+
   if (authLoading) {
     return (
       <div className="min-h-screen bg-background flex items-center justify-center">
@@ -59,8 +66,6 @@ export default function App() {
 
   const handleAddMed = async (newMed: Omit<Medication, 'id'>) => {
     await addMed(newMed);
-    const granted = await requestNotificationPermission();
-    if (granted) scheduleNotifications(newMed.name, newMed.times);
     setCurrentScreen('meds');
   };
 

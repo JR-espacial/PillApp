@@ -1,3 +1,5 @@
+import { getFirebaseMessaging } from './firebase/config';
+
 /** Convert "HH:MM" (24h) to "h:mm AM/PM" display string. */
 export function formatTime(hhmm: string): string {
   const [h, m] = hhmm.split(':').map(Number);
@@ -14,10 +16,8 @@ export async function requestNotificationPermission(): Promise<boolean> {
 }
 
 /**
- * Schedules browser notifications for each dose time today.
- * Times that have already passed are skipped.
- * Notifications fire while the app tab is open; for background delivery
- * a Firebase Cloud Messaging backend would be needed.
+ * Schedules browser notifications via setTimeout for doses still upcoming today.
+ * Only fires while the tab is open — FCM handles background delivery.
  */
 export function scheduleNotifications(medName: string, times: string[]): void {
   if (!('Notification' in window) || Notification.permission !== 'granted') return;
@@ -40,4 +40,27 @@ export function scheduleNotifications(medName: string, times: string[]): void {
       });
     }, msUntil);
   }
+}
+
+/**
+ * Listens for FCM messages when the app is in the foreground
+ * (the SW push handler only fires in background).
+ * Call once after the user is authenticated.
+ */
+export async function setupForegroundMessages(): Promise<void> {
+  const messaging = await getFirebaseMessaging();
+  if (!messaging) return;
+
+  const { onMessage } = await import('firebase/messaging');
+
+  onMessage(messaging, (payload) => {
+    if (Notification.permission !== 'granted') return;
+    const title = payload.notification?.title ?? 'Pill Reminder';
+    const body = payload.notification?.body ?? 'Time for your dose.';
+    new Notification(title, {
+      body,
+      icon: '/icons/icon-192.png',
+      tag: (payload.data?.['tag'] as string | undefined) ?? 'pill-reminder',
+    });
+  });
 }
