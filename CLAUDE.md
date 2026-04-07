@@ -13,6 +13,16 @@ npm run clean     # Remove dist/
 npm run deploy    # build + firebase deploy --only hosting
 ```
 
+## Deploying
+
+```bash
+npm run lint              # verify no TS errors first
+npm run build             # outputs to dist/
+firebase deploy           # deploys hosting + firestore rules + indexes
+firebase deploy --only hosting          # hosting only (faster)
+firebase deploy --only firestore        # rules + indexes only
+```
+
 No test framework is configured.
 
 ## Environment
